@@ -13,24 +13,27 @@ class DataspeedModel {
         required this.timestamp,
         required this.downloadRate,
         required this.uploadRate,
-        // required this.latitude,
-        // required this.longitude
+        required this.latitude,
+        required this.longitude,
+        required this.address,
     });
 
     ObjectId id;
     DateTime timestamp;
     String downloadRate;
     String uploadRate;
-    // String latitude;
-    // String longitude;
+    String latitude;
+    String longitude;
+    String address;
 
     factory DataspeedModel.fromJson(Map<String, dynamic> json) => DataspeedModel(
         id: json["_id"],
         timestamp: DateTime.parse(json["timestamp"]),
         downloadRate: json["downloadRate"],
         uploadRate: json["uploadRate"],
-        // latitude: json["latitude"],
-        // longitude: json["longitude"],
+        latitude: json["latitude"],
+        longitude: json["longitude"],
+        address: json["address"],
     );
 
     Map<String, dynamic> toJson() => {
@@ -38,7 +41,8 @@ class DataspeedModel {
         "timestamp": timestamp.toIso8601String(),
         "downloadRate": downloadRate,
         "uploadRate": uploadRate,
-        // "latitude": latitude,
-        // "longitude": longitude,
+        "latitude": latitude,
+        "longitude": longitude,
+        "address": address,
     };
 }
