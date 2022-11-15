@@ -16,6 +16,9 @@ class DataspeedModel {
         required this.latitude,
         required this.longitude,
         required this.address,
+        required this.place,
+        required this.venue,
+        required this.device,
     });
 
     ObjectId id;
@@ -25,6 +28,9 @@ class DataspeedModel {
     String latitude;
     String longitude;
     String address;
+    String place;
+    String venue;
+    String device;
 
     factory DataspeedModel.fromJson(Map<String, dynamic> json) => DataspeedModel(
         id: json["_id"],
@@ -34,6 +40,9 @@ class DataspeedModel {
         latitude: json["latitude"],
         longitude: json["longitude"],
         address: json["address"],
+        place: json["place"],
+        venue: json["venue"],
+        device: json["device"],
     );
 
     Map<String, dynamic> toJson() => {
@@ -44,5 +53,8 @@ class DataspeedModel {
         "latitude": latitude,
         "longitude": longitude,
         "address": address,
+        "place": place,
+        "venue": venue,
+        "device": device,
     };
 }

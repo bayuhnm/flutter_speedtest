@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_speedtest/connection/db_connection.dart';
-import 'screen/main_screen2.dart';
+import 'screen/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized;

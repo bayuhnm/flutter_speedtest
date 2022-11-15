@@ -1,3 +1,5 @@
+// ignore_for_file: import_of_legacy_library_into_null_safe
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speedtest/connection/db_connection.dart';
@@ -33,6 +35,9 @@ class _mainScreenState extends State<mainScreen> {
   String address = "";
   String? _currentAddress;
   Position? _currentPosition;
+  TextEditingController placeController = TextEditingController();
+  TextEditingController venueController = TextEditingController();
+  TextEditingController deviceController = TextEditingController();
 
   Future<void> setBestServers() async {
     final settings = await tester.getSettings();
@@ -74,7 +79,6 @@ class _mainScreenState extends State<mainScreen> {
     });
   }
 
-
   Future<bool> _handleLocationPermission() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -112,7 +116,9 @@ class _mainScreenState extends State<mainScreen> {
     if (!hasPermission) return;
     await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
         .then((Position position) {
-      setState(() => _currentPosition = position, );
+      setState(
+        () => _currentPosition = position,
+      );
       debugPrint('latlong = $position');
       _getAddressFromLatLng(_currentPosition!);
     }).catchError((e) {
@@ -132,7 +138,7 @@ class _mainScreenState extends State<mainScreen> {
         longitude = position.longitude;
       });
       debugPrint('address = $_currentAddress');
-      
+
       setState(() {
         loadingLocation = false;
       });
@@ -170,21 +176,31 @@ class _mainScreenState extends State<mainScreen> {
     }
   }
 
-  
-  Future<void> _insertData(String downloadRate, String uploadRate, String latitude, String longitude, String currentAddress) async {
+  Future<void> _insertData(
+      String downloadRate,
+      String uploadRate,
+      String latitude,
+      String longitude,
+      String currentAddress,
+      String place,
+      String venue,
+      String device ) async {
     var _id = mongo.ObjectId();
     DateTime timestamp = DateTime.now();
     timestamp.millisecondsSinceEpoch;
     final data = DataspeedModel(
-        id: _id,
-        timestamp: timestamp,
-        downloadRate: downloadRate,
-        uploadRate: uploadRate,
-        latitude: latitude,
-        longitude: longitude,
-        address: currentAddress,
-        );
-      debugPrint('Input data to MongoDB');
+      id: _id,
+      timestamp: timestamp,
+      downloadRate: downloadRate,
+      uploadRate: uploadRate,
+      latitude: latitude,
+      longitude: longitude,
+      address: currentAddress,
+      place: placeController.text,
+      venue: venueController.text,
+      device: deviceController.text,
+    );
+    debugPrint('Input data to MongoDB');
     var result = await MongoDatabase.insert(data);
   }
 
@@ -208,22 +224,21 @@ class _mainScreenState extends State<mainScreen> {
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [          
+            children: [
               if (loadingLocation)
-              Column(
-                children: const [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 10),
-                  Text('Getting location'),
-                ],
-              )
-              else  
-              // Location UI
-              Text('LAT: ${_currentPosition?.latitude ?? ""}'),
+                Column(
+                  children: const [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 10),
+                    Text('Getting location'),
+                  ],
+                )
+              else
+                // Location UI
+                Text('LAT: ${_currentPosition?.latitude ?? ""}'),
               Text('LNG: ${_currentPosition?.longitude ?? ""}'),
               Text('ADDRESS: ${_currentAddress ?? ""}'),
               const SizedBox(height: 10),
-
               const Text(
                 'Download Test:',
                 style: TextStyle(
@@ -282,6 +297,21 @@ class _mainScreenState extends State<mainScreen> {
               // )
               else
                 Text('Upload rate ${uploadRate.toStringAsFixed(2)} Mb/s'),
+              TextFormField(
+                controller: placeController,
+                decoration: InputDecoration(
+                    labelText: "Place", border: OutlineInputBorder()),
+              ),
+              TextFormField(
+                controller: venueController,
+                decoration: InputDecoration(
+                    labelText: "Venue", border: OutlineInputBorder()),
+              ),
+              TextFormField(
+                controller: deviceController,
+                decoration: InputDecoration(
+                    labelText: "Device", border: OutlineInputBorder()),
+              ),
               const SizedBox(
                 height: 30,
               ),
@@ -297,7 +327,15 @@ class _mainScreenState extends State<mainScreen> {
                         await _testDownloadSpeed();
                         await _testUploadSpeed();
                         _insertData(
-                            downloadRate.toString(), uploadRate.toString(), latitude.toString(), longitude.toString(), _currentAddress.toString());
+                          downloadRate.toString(),
+                          uploadRate.toString(),
+                          latitude.toString(),
+                          longitude.toString(),
+                          _currentAddress.toString(),
+                          placeController.toString(),
+                          venueController.toString(),
+                          deviceController.toString(),
+                        );
                       },
                 child: const Text('Start'),
               ),

@@ -1,11 +1,15 @@
+// ignore_for_file: import_of_legacy_library_into_null_safe
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speedtest/connection/db_connection.dart';
 import 'package:flutter_speedtest/model/dataspeedModel.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import 'package:speed_test_dart/classes/classes.dart';
 import 'package:speed_test_dart/speed_test_dart.dart';
 import 'package:lottie/lottie.dart';
+import 'package:geolocator/geolocator.dart';
 
 class mainScreen extends StatefulWidget {
   const mainScreen({super.key});
@@ -24,11 +28,16 @@ class _mainScreenState extends State<mainScreen> {
   bool readyToTest = false;
   bool loadingDownload = false;
   bool loadingUpload = false;
+  bool loadingLocation = false;
   String googleApikey = "AIzaSyBvJaPeqmGdxeJlxfDwDyNmjj1h1ZD9_bg";
-  double latitude = -7.285081;
-  double longitude = 112.781237;
+  double latitude = 0;
+  double longitude = 0;
   String address = "";
-
+  String? _currentAddress;
+  Position? _currentPosition;
+  TextEditingController placeController = TextEditingController();
+  TextEditingController venueController = TextEditingController();
+  TextEditingController deviceController = TextEditingController();
 
   Future<void> setBestServers() async {
     final settings = await tester.getSettings();
@@ -70,20 +79,75 @@ class _mainScreenState extends State<mainScreen> {
     });
   }
 
-  Future<void> _insertData(String downloadRate, String uploadRate) async {
-    var _id = mongo.ObjectId();
-    DateTime timestamp = DateTime.now();
-    timestamp.millisecondsSinceEpoch;
-    final data = DataspeedModel(
-        id: _id,
-        timestamp: timestamp,
-        downloadRate: downloadRate,
-        uploadRate: uploadRate);
-    var result = await MongoDatabase.insert(data);
+  Future<bool> _handleLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Location services are disabled. Please enable the services')));
+      return false;
+    }
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permissions are denied')));
+        return false;
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Location permissions are permanently denied, we cannot request permissions.')));
+      return false;
+    }
+    return true;
   }
 
+  Future<void> _getCurrentPosition() async {
+    setState(() {
+      loadingLocation = true;
+    });
+    final hasPermission = await _handleLocationPermission();
+    if (!hasPermission) return;
+    await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
+        .then((Position position) {
+      setState(
+        () => _currentPosition = position,
+      );
+      debugPrint('latlong = $position');
+      _getAddressFromLatLng(_currentPosition!);
+    }).catchError((e) {
+      debugPrint(e);
+    });
+  }
 
-  convertToAddress(double lat, double long, String apikey) async {
+  Future<void> _getAddressFromLatLng(Position position) async {
+    await placemarkFromCoordinates(
+            _currentPosition!.latitude, _currentPosition!.longitude)
+        .then((List<Placemark> placemarks) {
+      Placemark place = placemarks[0];
+      setState(() {
+        _currentAddress =
+            '${place.street}, ${place.subLocality}, ${place.subAdministrativeArea}, ${place.postalCode}';
+        latitude = position.latitude;
+        longitude = position.longitude;
+      });
+      debugPrint('address = $_currentAddress');
+
+      setState(() {
+        loadingLocation = false;
+      });
+    }).catchError((e) {
+      debugPrint(e);
+    });
+  }
+
+  Future<void> _convertToAddress(String lat, String long, String apikey) async {
     Dio dio = Dio(); //initilize dio package
     String apiurl =
         "https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$long&key=$apikey";
@@ -98,11 +162,8 @@ class _mainScreenState extends State<mainScreen> {
         if (data["results"].length > 0) {
           //if there is atleast one address
           Map firstresult = data["results"][0]; //select the first address
-
           address = firstresult["formatted_address"]; //get the address
-
           //you can use the JSON data to get address in your own format
-
           setState(() {
             //refresh UI
           });
@@ -115,12 +176,40 @@ class _mainScreenState extends State<mainScreen> {
     }
   }
 
-    @override
+  Future<void> _insertData(
+      String downloadRate,
+      String uploadRate,
+      String latitude,
+      String longitude,
+      String currentAddress,
+      String place,
+      String venue,
+      String device ) async {
+    var _id = mongo.ObjectId();
+    DateTime timestamp = DateTime.now();
+    timestamp.millisecondsSinceEpoch;
+    final data = DataspeedModel(
+      id: _id,
+      timestamp: timestamp,
+      downloadRate: downloadRate,
+      uploadRate: uploadRate,
+      latitude: latitude,
+      longitude: longitude,
+      address: currentAddress,
+      place: placeController.text,
+      venue: venueController.text,
+      device: deviceController.text,
+    );
+    debugPrint('Input data to MongoDB');
+    var result = await MongoDatabase.insert(data);
+  }
+
+  @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setBestServers();
     });
-    convertToAddress(latitude, longitude, googleApikey);
+    // _convertToAddress(latitude, longitude, googleApikey);
     super.initState();
   }
 
@@ -136,6 +225,20 @@ class _mainScreenState extends State<mainScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (loadingLocation)
+                Column(
+                  children: const [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 10),
+                    Text('Getting location'),
+                  ],
+                )
+              else
+                // Location UI
+                Text('LAT: ${_currentPosition?.latitude ?? ""}'),
+              Text('LNG: ${_currentPosition?.longitude ?? ""}'),
+              Text('ADDRESS: ${_currentAddress ?? ""}'),
+              const SizedBox(height: 10),
               const Text(
                 'Download Test:',
                 style: TextStyle(
@@ -159,32 +262,9 @@ class _mainScreenState extends State<mainScreen> {
                     const Text('Testing download speed...'),
                   ],
                 )
-              // Column(
-              //   children: const [
-              //     CircularProgressIndicator(),
-              //     SizedBox(
-              //       height: 10,
-              //     ),
-              //     Text('Testing download speed...'),
-              //   ],
-              // )
               else
                 Text('Download rate  ${downloadRate.toStringAsFixed(2)} Mb/s'),
               const SizedBox(height: 20),
-              // ElevatedButton(
-              //   style: ElevatedButton.styleFrom(
-              //     backgroundColor: readyToTest && !loadingDownload
-              //         ? Colors.blue
-              //         : Colors.grey,
-              //   ),
-              //   onPressed: loadingDownload
-              //       ? null
-              //       : () async {
-              //           if (!readyToTest || bestServersList.isEmpty) return;
-              //           await _testDownloadSpeed();
-              //         },
-              //   child: const Text('Start'),
-              // ),
               const Text(
                 'Upload Test:',
                 style: TextStyle(
@@ -217,6 +297,21 @@ class _mainScreenState extends State<mainScreen> {
               // )
               else
                 Text('Upload rate ${uploadRate.toStringAsFixed(2)} Mb/s'),
+              TextFormField(
+                controller: placeController,
+                decoration: InputDecoration(
+                    labelText: "Place", border: OutlineInputBorder()),
+              ),
+              TextFormField(
+                controller: venueController,
+                decoration: InputDecoration(
+                    labelText: "Venue", border: OutlineInputBorder()),
+              ),
+              TextFormField(
+                controller: deviceController,
+                decoration: InputDecoration(
+                    labelText: "Device", border: OutlineInputBorder()),
+              ),
               const SizedBox(
                 height: 30,
               ),
@@ -228,40 +323,22 @@ class _mainScreenState extends State<mainScreen> {
                     ? null
                     : () async {
                         if (!readyToTest || bestServersList.isEmpty) return;
+                        await _getCurrentPosition();
                         await _testDownloadSpeed();
                         await _testUploadSpeed();
                         _insertData(
-                            downloadRate.toString(), uploadRate.toString());
+                          downloadRate.toString(),
+                          uploadRate.toString(),
+                          latitude.toString(),
+                          longitude.toString(),
+                          _currentAddress.toString(),
+                          placeController.toString(),
+                          venueController.toString(),
+                          deviceController.toString(),
+                        );
                       },
                 child: const Text('Start'),
               ),
-
-              // Location UI
-              const Text(
-                'Latitude',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text("$latitude"),
-              const Text(
-                'Longitude',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text("$longitude"),
-              const Text(
-                'Address',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text("$address", ),
-
             ],
           ),
         ),
