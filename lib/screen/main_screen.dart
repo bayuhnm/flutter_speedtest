@@ -23,13 +23,14 @@ class _mainScreenState extends State<mainScreen> {
   List<Server> bestServersList = [];
 
   // All Variable
+  final formGlobalKey = GlobalKey<FormState>();
   double downloadRate = 0;
   double uploadRate = 0;
   bool readyToTest = false;
   bool loadingDownload = false;
   bool loadingUpload = false;
   bool loadingLocation = false;
-  String googleApikey = "AIzaSyBvJaPeqmGdxeJlxfDwDyNmjj1h1ZD9_bg";
+  String googleApikey = "";
   double latitude = 0;
   double longitude = 0;
   String address = "";
@@ -184,7 +185,7 @@ class _mainScreenState extends State<mainScreen> {
       String currentAddress,
       String place,
       String venue,
-      String device ) async {
+      String device) async {
     var _id = mongo.ObjectId();
     DateTime timestamp = DateTime.now();
     timestamp.millisecondsSinceEpoch;
@@ -204,6 +205,26 @@ class _mainScreenState extends State<mainScreen> {
     var result = await MongoDatabase.insert(data);
   }
 
+  String? get _errorText {
+    final textPlace = placeController.value.text;
+    final textVenue = venueController.value.text;
+    final textDevice = placeController.value.text;
+
+    if (textPlace.isEmpty) {
+      return 'Form Place tidak boleh kosong';
+    }
+    if (textVenue.isEmpty) {
+      return 'Form Venue tidak boleh kosong';
+    }
+    if (textDevice.isEmpty) {
+      return 'Form Device tidak boleh kosong';
+    }
+    if (textPlace.isEmpty && textVenue.isEmpty && textDevice.isEmpty) {
+      return 'Isi semua form';
+    }
+    return null;
+  }
+
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -221,125 +242,171 @@ class _mainScreenState extends State<mainScreen> {
         appBar: AppBar(
           title: const Text('Speed Test App'),
         ),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (loadingLocation)
-                Column(
-                  children: const [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 10),
-                    Text('Getting location'),
-                  ],
-                )
-              else
-                // Location UI
-                Text('LAT: ${_currentPosition?.latitude ?? ""}'),
-              Text('LNG: ${_currentPosition?.longitude ?? ""}'),
-              Text('ADDRESS: ${_currentAddress ?? ""}'),
-              const SizedBox(height: 10),
-              const Text(
-                'Download Test:',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+        body: SingleChildScrollView(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  height: 20,
                 ),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              if (loadingDownload)
-                Column(
-                  children: [
-                    Lottie.asset(
-                      'asset/126511-speed-blue-braga.json',
-                      repeat: true,
-                      animate: true,
-                      width: 200,
-                      height: 200,
+                SizedBox(
+                  width: 300,
+                  height: 50,
+                  child: TextFormField(
+                    controller: placeController,
+                    decoration: InputDecoration(
+                      labelText: "Place",
+                      border: OutlineInputBorder(),
                     ),
-                    const Text('Testing download speed...'),
-                  ],
-                )
-              else
-                Text('Download rate  ${downloadRate.toStringAsFixed(2)} Mb/s'),
-              const SizedBox(height: 20),
-              const Text(
-                'Upload Test:',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              if (loadingUpload)
-                Column(
-                  children: [
-                    Lottie.asset(
-                      'asset/126532-speed-green-braga.json',
-                      repeat: true,
-                      animate: true,
-                      width: 200,
-                      height: 200,
+                const SizedBox(
+                  height: 10,
+                ),
+                SizedBox(
+                  width: 300,
+                  height: 50,
+                  child: TextFormField(
+                    controller: venueController,
+                    decoration: InputDecoration(
+                        labelText: "Venue", border: OutlineInputBorder()),
+                  ),
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                SizedBox(
+                  width: 300,
+                  height: 50,
+                  child: TextFormField(
+                    controller: deviceController,
+                    decoration: InputDecoration(
+                        labelText: "Device", border: OutlineInputBorder()),
+                  ),
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                const Text(
+                    'Your Location:',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const Text('Testing upload speed...'),
-                  ],
-                )
-              // Column(
-              //   children: const [
-              //     CircularProgressIndicator(),
-              //     SizedBox(height: 10),
-              //     Text('Testing upload speed...'),
-              //   ],
-              // )
-              else
-                Text('Upload rate ${uploadRate.toStringAsFixed(2)} Mb/s'),
-              TextFormField(
-                controller: placeController,
-                decoration: InputDecoration(
-                    labelText: "Place", border: OutlineInputBorder()),
-              ),
-              TextFormField(
-                controller: venueController,
-                decoration: InputDecoration(
-                    labelText: "Venue", border: OutlineInputBorder()),
-              ),
-              TextFormField(
-                controller: deviceController,
-                decoration: InputDecoration(
-                    labelText: "Device", border: OutlineInputBorder()),
-              ),
-              const SizedBox(
-                height: 30,
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: readyToTest ? Colors.blue : Colors.grey,
+                  ),
+                if (loadingLocation)
+                  Column(
+                    children: const [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 30),
+                      Text('Getting location'),
+                    ],
+                  )
+                else
+                  // Location UI
+                  
+                const SizedBox(
+                  height: 10,
                 ),
-                onPressed: loadingDownload && loadingUpload
-                    ? null
-                    : () async {
-                        if (!readyToTest || bestServersList.isEmpty) return;
-                        await _getCurrentPosition();
-                        await _testDownloadSpeed();
-                        await _testUploadSpeed();
-                        _insertData(
-                          downloadRate.toString(),
-                          uploadRate.toString(),
-                          latitude.toString(),
-                          longitude.toString(),
-                          _currentAddress.toString(),
-                          placeController.toString(),
-                          venueController.toString(),
-                          deviceController.toString(),
-                        );
-                      },
-                child: const Text('Start'),
-              ),
-            ],
+                Center(
+                  child: Column(
+                    children: [
+                      Text('LAT: ${_currentPosition?.latitude ?? ""}'),
+                      Text('LNG: ${_currentPosition?.longitude ?? ""}'),
+                      Text('ADDRESS: ${_currentAddress ?? ""}'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Download Test:',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                if (loadingDownload)
+                  Column(
+                    children: [
+                      Lottie.asset(
+                        'asset/126511-speed-blue-braga.json',
+                        repeat: true,
+                        animate: true,
+                        width: 200,
+                        height: 200,
+                      ),
+                      const Text('Testing download speed...'),
+                    ],
+                  )
+                else
+                  Text(
+                      'Download rate  ${downloadRate.toStringAsFixed(2)} Mb/s'),
+                const SizedBox(height: 20),
+                const Text(
+                  'Upload Test:',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                if (loadingUpload)
+                  Column(
+                    children: [
+                      Lottie.asset(
+                        'asset/126532-speed-green-braga.json',
+                        repeat: true,
+                        animate: true,
+                        width: 200,
+                        height: 200,
+                      ),
+                      const Text('Testing upload speed...'),
+                    ],
+                  )
+                // Column(
+                //   children: const [
+                //     CircularProgressIndicator(),
+                //     SizedBox(height: 10),
+                //     Text('Testing upload speed...'),
+                //   ],
+                // )
+                else
+                  Text('Upload rate ${uploadRate.toStringAsFixed(2)} Mb/s'),
+                const SizedBox(
+                  height: 30,
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: readyToTest ? Colors.blue : Colors.grey,
+                  ),
+                  onPressed: loadingDownload && loadingUpload
+                      ? null
+                      : () async {
+                          if (!readyToTest || bestServersList.isEmpty) return;
+                          await _getCurrentPosition();
+                          await _testDownloadSpeed();
+                          await _testUploadSpeed();
+                          _insertData(
+                            downloadRate.toString(),
+                            uploadRate.toString(),
+                            latitude.toString(),
+                            longitude.toString(),
+                            _currentAddress.toString(),
+                            placeController.toString(),
+                            venueController.toString(),
+                            deviceController.toString(),
+                          );
+                        },
+                  child: const Text('Start'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
