@@ -1,5 +1,7 @@
 // ignore_for_file: import_of_legacy_library_into_null_safe
 
+import 'dart:ui';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speedtest/connection/db_connection.dart';
@@ -252,7 +254,7 @@ class _mainScreenState extends State<mainScreen> {
                 ),
                 SizedBox(
                   width: 300,
-                  height: 50,
+                  height: 45,
                   child: TextFormField(
                     controller: placeController,
                     decoration: InputDecoration(
@@ -266,7 +268,7 @@ class _mainScreenState extends State<mainScreen> {
                 ),
                 SizedBox(
                   width: 300,
-                  height: 50,
+                  height: 45,
                   child: TextFormField(
                     controller: venueController,
                     decoration: InputDecoration(
@@ -278,7 +280,7 @@ class _mainScreenState extends State<mainScreen> {
                 ),
                 SizedBox(
                   width: 300,
-                  height: 50,
+                  height: 45,
                   child: TextFormField(
                     controller: deviceController,
                     decoration: InputDecoration(
@@ -286,39 +288,56 @@ class _mainScreenState extends State<mainScreen> {
                   ),
                 ),
                 const SizedBox(
-                  height: 10,
+                  height: 20,
                 ),
                 const Text(
-                    'Your Location:',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  'Your Location:',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
+                ),
                 if (loadingLocation)
                   Column(
                     children: const [
                       CircularProgressIndicator(),
-                      SizedBox(height: 30),
-                      Text('Getting location'),
+                      Text(
+                        'Getting location',
+                      ),
                     ],
                   )
                 else
                   // Location UI
-                  
-                const SizedBox(
-                  height: 10,
-                ),
-                Center(
-                  child: Column(
-                    children: [
-                      Text('LAT: ${_currentPosition?.latitude ?? ""}'),
-                      Text('LNG: ${_currentPosition?.longitude ?? ""}'),
-                      Text('ADDRESS: ${_currentAddress ?? ""}'),
-                    ],
+                  const SizedBox(
+                    height: 10,
                   ),
+                Center(
+                  child: SizedBox(
+                      width: 300,
+                      child: Column(
+                        children: [
+                          Text(
+                            'Lat',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text('${_currentPosition?.latitude ?? "---"}'),
+                          Text(
+                            'Long',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text('${_currentPosition?.longitude ?? "---"}'),
+                          Text(
+                            'Address',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            '${_currentAddress ?? "---"}',
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      )),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
                 const Text(
                   'Download Test:',
                   style: TextStyle(
@@ -383,6 +402,7 @@ class _mainScreenState extends State<mainScreen> {
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
+                    fixedSize: const Size(200, 40),
                     backgroundColor: readyToTest ? Colors.blue : Colors.grey,
                   ),
                   onPressed: loadingDownload && loadingUpload
@@ -405,6 +425,9 @@ class _mainScreenState extends State<mainScreen> {
                         },
                   child: const Text('Start'),
                 ),
+                SizedBox(
+                  height: 30,
+                )
               ],
             ),
           ),
